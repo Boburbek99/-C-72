@@ -1,5 +1,6 @@
 import axios from 'axios';
-async function getBooksList(query = 'javascript', startIndex = 0) {
+
+async function getBooks(query = 'javascript', startIndex = 0) {
     try {
         const response = await axios.get('https://www.googleapis.com/books/v1/volumes', {
             params: { q: query, startIndex, maxResults: 10 },
@@ -10,4 +11,4 @@ async function getBooksList(query = 'javascript', startIndex = 0) {
         throw error;
     }
 }
-export { getBooksList };
+export { getBooks };
