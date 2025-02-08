@@ -18,3 +18,12 @@ export const getFromLocalStorage = (key) => {
         return null;
     }
 };
+export const removeToLocalStorage = (key) => {
+    try {
+        const serializedData = localStorage.removeItem(key);
+        return serializedData;
+    } catch (error) {
+        console.error('Ошибка при получении данных из localStorage:', error);
+        return null;
+    }
+};
