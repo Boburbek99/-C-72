@@ -15,7 +15,7 @@
         </IconField>
       </div>
       <div ref="scrollContainer" class="table-container overflow-y-auto m-auto  max-h-145" @scroll="handleScroll">
-        <DataTable :value="books" class="table-auto" tableStyle="max-width: 70rem; margin:auto">
+        <DataTable :value="books" class="table-auto " tableStyle="max-width: 70rem; margin:auto  ">
           <Column header="№">
             <template #body="{ index }">
               {{ index + 1 }}
@@ -59,7 +59,6 @@
                   </p>
                   <Divider />
                 </div>
-
                 <div class="flex justify-end gap-3 ">
                   <Button type="button" label="Отменить" severity="secondary" @click="closeEditModal(data.id)"></Button>
                   <Button type="button" label="Сохранить" @click="saveChanges(data)"></Button>
@@ -85,7 +84,6 @@ import Button from 'primevue/button';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Divider from 'primevue/divider';
-
 import Textarea from 'primevue/textarea';
 
 
@@ -95,6 +93,11 @@ import { ref, onMounted, watch } from 'vue';
 import { saveToLocalStorage, getFromLocalStorage, removeToLocalStorage } from '@/utils/localStoreg';
 import { getBooks } from '@/requests/bookRequest.js';
 import BookModal from '@/components/BookModal.vue';
+
+import { useRoute, useRouter } from 'vue-router';
+
+const route = useRoute();
+const router = useRouter();
 
 const STORAGE_KEY = 'lastLoadedBooks';
 
@@ -126,7 +129,6 @@ const fetchBooks = async (query, startIndex) => {
     if (!response.data || !response.data.items) {
       throw new Error('No data found');
     }
-    console.log(response.data.items, 'items')
     const newBooks = response.data.items.map((item, index) => ({
       index: index + 1,
       id: item.id,
@@ -167,14 +169,29 @@ watch(searchQuery, debounce(async (newQuery) => {
   }
 }, 1000));
 
+
+// Отслеживаем изменения в query параметрах
+watch(() => route.query.modal, (newModalId) => {
+  if (newModalId) {
+    // Если в URL есть параметр modal, открываем модальное окно
+    openModal(newModalId, false);
+  } else {
+    // Если параметра modal нет, закрываем все модальные окна
+    Object.keys(modalVisibility.value).forEach((key) => {
+      modalVisibility.value[key] = false;
+    });
+  }
+});
 function openModal(bookId, editMode) {
   modalVisibility.value = { ...modalVisibility.value, [bookId]: true };
   isEditing.value = { ...isEditing.value, [bookId]: editMode };
+  router.push({ query: { modal: bookId } });
 }
 
 function closeEditModal(bookId) {
   modalVisibility.value = { ...modalVisibility.value, [bookId]: false };
   isEditing.value = { ...isEditing.value, [bookId]: false };
+  router.push({ query: {} });
 }
 
 const loadMore = () => {

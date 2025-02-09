@@ -1,5 +1,4 @@
 <template>
-
   <Teleport to="header">
     <Dialog v-model:visible="modelValue" modal header="Информация о книге" class="w-lg">
       <div class="flex-column ">
@@ -8,7 +7,6 @@
     </Dialog>
   </Teleport>
 </template>
-
 <script setup>
 import Dialog from 'primevue/dialog';
 

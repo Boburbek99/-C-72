@@ -2,7 +2,9 @@
 import Navbar from './components/Navbar.vue';
 </script>
 <template>
-  <Navbar />
-  <router-view></router-view>
+  <div class="block-main bg- ">
+    <Navbar />
+    <router-view></router-view>
+  </div>
 </template>
 <style scoped></style>
