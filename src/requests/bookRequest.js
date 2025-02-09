@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-async function getBooks(query = "JavaScript", startIndex = 0, maxResults = 10) {
+async function getBooks(query, startIndex = 0) {
     try {
+        const searchQuery = query || 'JavaScript';
         const response = await axios.get('https://www.googleapis.com/books/v1/volumes', {
-            params: { q: query, startIndex, maxResults: maxResults },
+            params: { q: searchQuery, startIndex, maxResults: 10 },
         });
         return response;
     } catch (error) {

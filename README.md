@@ -27,3 +27,7 @@ npm run dev
 ```sh
 npm run build
 ```
+
+### Deploy
+
+https://soft72.netlify.app/

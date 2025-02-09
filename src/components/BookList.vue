@@ -1,13 +1,9 @@
 <template>
   <div class="card">
-    <div v-if="loading" class="card h-screen flex items-center">
-      <ProgressSpinner class="absolute" style="width: 50px; height: 50px" strokeWidth="8" fill="transparent"
-        animationDuration="0.5s" aria-label="Custom ProgressSpinner" />
-    </div>
-    <div v-else>
+    <div v-if="error">
       <span class="card h-screen flex items-center justify-center text-2xl" v-if="error">{{ error }}</span>
     </div>
-    <div v-if="books && !error && !loading" class="main-block">
+    <div v-if="books && !error" class="main-block">
       <div class="card flex justify-center my-5">
         <IconField>
           <InputIcon class="pi pi-search" />
@@ -66,9 +62,16 @@
               </BookModal>
             </template>
           </Column>
+          <template #footer>
+            <div class="flex flex-wrap items-center justify-center gap-2">
+              <div v-if="isLoadingMore" class="card flex justify-center">
+                <ProgressSpinner />
+              </div>
+            </div>
+          </template>
         </DataTable>
       </div>
-      <div v-if="!error && !loading" class="card flex justify-center ">
+      <div v-if="!error" class="card flex justify-center ">
         <Button label="Загрузить ещё" @click="loadMore()" class="m-auto my-3 " />
       </div>
     </div>
@@ -78,7 +81,7 @@
 <script setup>
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
-import ProgressSpinner from 'primevue/progressspinner';
+
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
 import IconField from 'primevue/iconfield';
@@ -86,14 +89,13 @@ import InputIcon from 'primevue/inputicon';
 import Divider from 'primevue/divider';
 import Textarea from 'primevue/textarea';
 
-
 import { debounce } from 'lodash';
 
 import { ref, onMounted, watch } from 'vue';
 import { saveToLocalStorage, getFromLocalStorage, removeToLocalStorage } from '@/utils/localStoreg';
 import { getBooks } from '@/requests/bookRequest.js';
 import BookModal from '@/components/BookModal.vue';
-
+import ProgressSpinner from '@/components/Forms/ProgressSpinner.vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -102,7 +104,7 @@ const router = useRouter();
 const STORAGE_KEY = 'lastLoadedBooks';
 
 const books = ref([]);
-const loading = ref(true);
+
 const error = ref(null);
 const startIndex = ref(0);
 const searchQuery = ref('');
@@ -115,19 +117,19 @@ const validText = ref('')
 const handleScroll = () => {
   const container = scrollContainer.value;
   if (container) {
-    const isBottom =
-      container.scrollTop + container.clientHeight >= container.scrollHeight - 100;
+    const isBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100;
     if (isBottom && !isLoadingMore.value) {
       isLoadingMore.value = true;
       loadMore();
     }
   }
 };
+
 const fetchBooks = async (query, startIndex) => {
   try {
     const response = await getBooks(query, startIndex);
     if (!response.data || !response.data.items) {
-      throw new Error('No data found');
+      return error.value = ' Не найден';
     }
     const newBooks = response.data.items.map((item, index) => ({
       index: index + 1,
@@ -145,17 +147,17 @@ const fetchBooks = async (query, startIndex) => {
     error.value = 'Ошибка при загрузке данных';
     console.error(err);
   } finally {
-    loading.value = false;
+    isLoadingMore.value = false;
   }
 };
 
 onMounted(async () => {
   const savedData = getFromLocalStorage(STORAGE_KEY);
   if (savedData && savedData.books) {
+    isLoadingMore.value = true;
     searchQuery.value = savedData.query;
     books.value = savedData.books;
-
-    loading.value = false;
+    isLoadingMore.value = false;
   } else {
     await fetchBooks('JavaScript', 0);
   }
@@ -163,25 +165,22 @@ onMounted(async () => {
 
 watch(searchQuery, debounce(async (newQuery) => {
   if (newQuery) {
+    isLoadingMore.value = true;
     startIndex.value = 0;
     await fetchBooks(newQuery, startIndex.value);
     removeToLocalStorage(STORAGE_KEY);
+    isLoadingMore.value = false;
   }
 }, 1000));
 
-
-// Отслеживаем изменения в query параметрах
 watch(() => route.query.modal, (newModalId) => {
   if (newModalId) {
-    // Если в URL есть параметр modal, открываем модальное окно
-    openModal(newModalId, false);
+    openModal(newModalId, true);
   } else {
-    // Если параметра modal нет, закрываем все модальные окна
-    Object.keys(modalVisibility.value).forEach((key) => {
-      modalVisibility.value[key] = false;
-    });
+    modalVisibility.value = {};
   }
-});
+}, { immediate: true });
+
 function openModal(bookId, editMode) {
   modalVisibility.value = { ...modalVisibility.value, [bookId]: true };
   isEditing.value = { ...isEditing.value, [bookId]: editMode };
@@ -194,10 +193,15 @@ function closeEditModal(bookId) {
   router.push({ query: {} });
 }
 
-const loadMore = () => {
+const loadMore = async () => {
+  isLoadingMore.value = true;
+  if (startIndex.value >= 1000) {
+    console.log('Достигнут лимит запросов');
+    return;
+  }
   startIndex.value += 10;
-  fetchBooks(searchQuery.value, startIndex.value);
-  isLoadingMore.value = false
+  await fetchBooks(searchQuery.value, startIndex.value);
+  isLoadingMore.value = false;
 };
 
 const validateTitle = (title) => {
